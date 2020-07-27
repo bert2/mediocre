@@ -31,7 +31,7 @@
             var height = 1080; // GetSystemMetrics(SystemMetric.SM_CYVIRTUALSCREEN);
 
             using var screen = new Bitmap(width, height);
-            using var screeGfx = Graphics.FromImage(screen);
+            using var screenGfx = Graphics.FromImage(screen);
 
             using var avg = new Bitmap(1, 1);
             using var avgGfx = Graphics.FromImage(avg);
@@ -68,7 +68,7 @@
             var prevColor = Color.Black;
             var prevBright = 0;
             while (true) {
-                screeGfx.CopyFromScreen(left, top, 0, 0, screen.Size);
+                screenGfx.CopyFromScreen(left, top, 0, 0, screen.Size);
                 avgGfx.DrawImage(screen, 0, 0, avg.Width, avg.Height);
 
                 var color = avg.GetPixel(0, 0);
