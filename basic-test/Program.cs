@@ -36,8 +36,6 @@
 
             using var avg = new Bitmap(1, 1);
             using var avgGfx = Graphics.FromImage(avg);
-            avgGfx.CompositingMode = CompositingMode.SourceCopy;
-            avgGfx.CompositingQuality = CompositingQuality.HighQuality;
             avgGfx.InterpolationMode = InterpolationMode.HighQualityBicubic;
 
             var device = await InitYeelight();
