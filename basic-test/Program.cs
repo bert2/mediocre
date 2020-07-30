@@ -1,8 +1,11 @@
 ﻿namespace basic_test {
     using System;
+    using System.Collections.Generic;
     using System.Diagnostics;
     using System.Drawing;
     using System.Drawing.Drawing2D;
+    using System.Drawing.Imaging;
+    using System.IO;
     using System.Linq;
     using System.Net.NetworkInformation;
     using System.Net.Sockets;
@@ -26,11 +29,25 @@
         public static extern int GetSystemMetrics(SystemMetric metric);
 
         public static async Task Main() {
-            const bool projector = true;
+            const bool benchmark = true;
+            const bool projector = false;
+
             var left = projector ? GetSystemMetrics(SystemMetric.SM_XVIRTUALSCREEN) : 0;
             var top = projector ? GetSystemMetrics(SystemMetric.SM_YVIRTUALSCREEN) : 0;
             var width = 1920; // GetSystemMetrics(SystemMetric.SM_CXVIRTUALSCREEN);
             var height = 1080; // GetSystemMetrics(SystemMetric.SM_CYVIRTUALSCREEN);
+
+            if (benchmark)
+                Benchmark(left, top, width, height);
+            else
+                await MainLoop(left, top, width, height, frequency: 30);
+        }
+
+        private static async Task MainLoop(int left, int top, int width, int height, int frequency) {
+            var delay = 1000 / frequency;
+
+            var device = await InitYeelight();
+            const int smooth = 300;
 
             using var screen = new Bitmap(width, height);
             using var screenGfx = Graphics.FromImage(screen);
@@ -38,12 +55,6 @@
             using var avg = new Bitmap(1, 1);
             using var avgGfx = Graphics.FromImage(avg);
             avgGfx.InterpolationMode = InterpolationMode.HighQualityBicubic;
-
-            var device = await InitYeelight();
-
-            const int frequency = 24;
-            const int delay = 1000 / frequency;
-            const int smooth = 300;
 
             var prevColor = Color.Black;
             var prevBright = 0;
@@ -69,6 +80,87 @@
 
                 await Task.Delay(delay);
             }
+        }
+
+        private static void Benchmark(int left, int top, int width, int height) {
+            const int iterations = 1000;
+
+            using var screen = new Bitmap(width, height);
+            using var screenGfx = Graphics.FromImage(screen);
+
+            using var avgBicubic = new Bitmap(1, 1);
+            using var avgBicubicGfx = Graphics.FromImage(avgBicubic);
+
+            var avgsBase = new StringBuilder(20 * iterations);
+            var avgsBicubic = new StringBuilder(20 * iterations);
+            var avgsBicubicHq = new StringBuilder(20 * iterations);
+
+            Console.WriteLine("warming up...");
+            for (var i = 0; i < 100; i++) {
+                screenGfx.CopyFromScreen(left, top, 0, 0, screen.Size);
+                Console.WriteLine(GetAvgBicubicHq(screen, avgBicubic, avgBicubicGfx));
+            }
+
+            var sw = new Stopwatch();
+            for (var i = 0; i < iterations; i++) {
+                Console.WriteLine(i);
+                screenGfx.CopyFromScreen(left, top, 0, 0, screen.Size);
+
+                sw.Restart();
+                var currAvgTruth = GetAvgTruth(screen);
+                sw.Stop();
+                _ = avgsBase.AppendColor(currAvgTruth).Append(sw.ElapsedMilliseconds).AppendLine();
+
+                sw.Restart();
+                var currAvgBicubic = GetAvgBicubic(screen, avgBicubic, avgBicubicGfx);
+                sw.Stop();
+                _ = avgsBicubic.AppendColor(currAvgBicubic).Append(sw.ElapsedMilliseconds).AppendLine();
+
+                sw.Restart();
+                var currAvgBicubicHq = GetAvgBicubicHq(screen, avgBicubic, avgBicubicGfx);
+                sw.Stop();
+                _ = avgsBicubicHq.AppendColor(currAvgBicubicHq).Append(sw.ElapsedMilliseconds).AppendLine();
+            }
+
+            File.WriteAllText("avgs-baseline.csv", avgsBase.ToString());
+            File.WriteAllText("avgs-bicubic.csv", avgsBicubic.ToString());
+            File.WriteAllText("avgs-bicubic-hq.csv", avgsBicubicHq.ToString());
+        }
+
+        private static Color GetAvgBicubicHq(Bitmap screen, Bitmap avg, Graphics avgGfx) {
+            avgGfx.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            avgGfx.DrawImage(screen, 0, 0, avg.Width, avg.Height);
+            return avg.GetPixel(0, 0);
+        }
+
+        private static Color GetAvgBicubic(Bitmap screen, Bitmap avg, Graphics avgGfx) {
+            avgGfx.InterpolationMode = InterpolationMode.Bicubic;
+            avgGfx.DrawImage(screen, 0, 0, avg.Width, avg.Height);
+            return avg.GetPixel(0, 0);
+        }
+
+        private static unsafe Color GetAvgTruth(Bitmap screen) {
+            var data = screen.LockBits(
+                new Rectangle(0, 0, screen.Width, screen.Height),
+                ImageLockMode.ReadOnly,
+                PixelFormat.Format24bppRgb);
+
+            if (data.Stride != data.Width * 3) throw new InvalidOperationException("Padded images not supported");
+
+            var raw = (byte*)data.Scan0.ToPointer();
+            var (r, g, b) = (0L, 0L, 0L);
+            var rawLength = data.Width * data.Height * 3;
+
+            for (var i = 0; i < rawLength;) {
+                b += raw[i++];
+                g += raw[i++];
+                r += raw[i++];
+            }
+
+            screen.UnlockBits(data);
+
+            var n = data.Width * data.Height;
+            return Color.FromArgb((int)(r / n), (int)(g / n), (int)(b / n));
         }
 
         private static async Task<TcpClient> InitYeelight() {
@@ -118,5 +210,12 @@
             Log($"ready to {msg ?? "continue"}? press any key to continue...");
             _ = Console.ReadKey(true);
         }
+
+        private static string Join(this IEnumerable<string> strs, string sep) => string.Join(sep, strs);
+
+        private static StringBuilder AppendColor(this StringBuilder sb, Color c) => sb
+            .Append(c.R).Append(", ")
+            .Append(c.G).Append(", ")
+            .Append(c.B).Append(", ");
     }
 }
