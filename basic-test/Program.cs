@@ -26,8 +26,9 @@
         public static extern int GetSystemMetrics(SystemMetric metric);
 
         public static async Task Main() {
-            var left = 0; // GetSystemMetrics(SystemMetric.SM_XVIRTUALSCREEN);
-            var top = 0; // GetSystemMetrics(SystemMetric.SM_YVIRTUALSCREEN);
+            const bool projector = true;
+            var left = projector ? GetSystemMetrics(SystemMetric.SM_XVIRTUALSCREEN) : 0;
+            var top = projector ? GetSystemMetrics(SystemMetric.SM_YVIRTUALSCREEN) : 0;
             var width = 1920; // GetSystemMetrics(SystemMetric.SM_CXVIRTUALSCREEN);
             var height = 1080; // GetSystemMetrics(SystemMetric.SM_CYVIRTUALSCREEN);
 
