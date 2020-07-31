@@ -9,6 +9,8 @@
     using System.Linq;
     using System.Net.NetworkInformation;
     using System.Net.Sockets;
+    using System.Numerics;
+    using System.Runtime.CompilerServices;
     using System.Runtime.InteropServices;
     using System.Text;
     using System.Threading.Tasks;
@@ -88,12 +90,30 @@
             using var screen = new Bitmap(width, height);
             using var screenGfx = Graphics.FromImage(screen);
 
+            const int levels = 4;
+            var avgLevels = Enumerable.Range(0, levels)
+                .Select(l => {
+                    var size = 1 << (2 * l);
+                    var bmp = new Bitmap(size, size);
+                    var gfx = Graphics.FromImage(bmp);
+                    return (bmp, gfx);
+                })
+                .Reverse()
+                .ToArray();
+
             using var avgBicubic = new Bitmap(1, 1);
             using var avgBicubicGfx = Graphics.FromImage(avgBicubic);
+            using var avgBicubic2 = new Bitmap(4, 4);
+            using var avgBicubic2Gfx = Graphics.FromImage(avgBicubic2);
 
             var avgsBase = new StringBuilder(20 * iterations);
-            var avgsBicubic = new StringBuilder(20 * iterations);
+            var avgsTpl = new StringBuilder(20 * iterations);
+            var avgsSimd = new StringBuilder(20 * iterations);
             var avgsBicubicHq = new StringBuilder(20 * iterations);
+            var avgsBicubic1x = new StringBuilder(20 * iterations);
+            var avgsBicubic2x = new StringBuilder(20 * iterations);
+            var avgsBicubic3x = new StringBuilder(20 * iterations);
+            var avgsBicubic4x = new StringBuilder(20 * iterations);
 
             Console.WriteLine("warming up...");
             for (var i = 0; i < 100; i++) {
@@ -105,26 +125,57 @@
             for (var i = 0; i < iterations; i++) {
                 Console.WriteLine(i);
                 screenGfx.CopyFromScreen(left, top, 0, 0, screen.Size);
+                Color avg;
 
                 sw.Restart();
-                var currAvgTruth = GetAvgTruth(screen);
+                avg = GetAvgBase(screen);
                 sw.Stop();
-                _ = avgsBase.AppendColor(currAvgTruth).Append(sw.ElapsedMilliseconds).AppendLine();
+                _ = avgsBase.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
+
+                //sw.Restart();
+                //avg = GetAvgTpl(screen);
+                //sw.Stop();
+                //_ = avgsTpl.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
 
                 sw.Restart();
-                var currAvgBicubic = GetAvgBicubic(screen, avgBicubic, avgBicubicGfx);
+                avg = GetAvgSimd(screen);
                 sw.Stop();
-                _ = avgsBicubic.AppendColor(currAvgBicubic).Append(sw.ElapsedMilliseconds).AppendLine();
+                _ = avgsSimd.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
 
                 sw.Restart();
-                var currAvgBicubicHq = GetAvgBicubicHq(screen, avgBicubic, avgBicubicGfx);
+                avg = GetAvgBicubicHq(screen, avgBicubic, avgBicubicGfx);
                 sw.Stop();
-                _ = avgsBicubicHq.AppendColor(currAvgBicubicHq).Append(sw.ElapsedMilliseconds).AppendLine();
+                _ = avgsBicubicHq.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
+
+                sw.Restart();
+                avg = GetAvgBicubicIter(1, screen, avgLevels);
+                sw.Stop();
+                _ = avgsBicubic1x.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
+
+                sw.Restart();
+                avg = GetAvgBicubicIter(2, screen, avgLevels);
+                sw.Stop();
+                _ = avgsBicubic2x.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
+
+                sw.Restart();
+                avg = GetAvgBicubicIter(3, screen, avgLevels);
+                sw.Stop();
+                _ = avgsBicubic3x.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
+
+                sw.Restart();
+                avg = GetAvgBicubicIter(4, screen, avgLevels);
+                sw.Stop();
+                _ = avgsBicubic4x.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
             }
 
-            File.WriteAllText("avgs-baseline.csv", avgsBase.ToString());
-            File.WriteAllText("avgs-bicubic.csv", avgsBicubic.ToString());
-            File.WriteAllText("avgs-bicubic-hq.csv", avgsBicubicHq.ToString());
+            if (avgsBase.Length > 0)      File.WriteAllText("avgs-baseline.csv", avgsBase.ToString());
+            if (avgsTpl.Length > 0)       File.WriteAllText("avgs-tpl.csv", avgsTpl.ToString());
+            if (avgsSimd.Length > 0)      File.WriteAllText("avgs-simd.csv", avgsSimd.ToString());
+            if (avgsBicubicHq.Length > 0) File.WriteAllText("avgs-bicubic-hq.csv", avgsBicubicHq.ToString());
+            if (avgsBicubic1x.Length > 0) File.WriteAllText("avgs-bicubic-1x.csv", avgsBicubic1x.ToString());
+            if (avgsBicubic2x.Length > 0) File.WriteAllText("avgs-bicubic-2x.csv", avgsBicubic2x.ToString());
+            if (avgsBicubic3x.Length > 0) File.WriteAllText("avgs-bicubic-3x.csv", avgsBicubic3x.ToString());
+            if (avgsBicubic4x.Length > 0) File.WriteAllText("avgs-bicubic-4x.csv", avgsBicubic4x.ToString());
         }
 
         private static Color GetAvgBicubicHq(Bitmap screen, Bitmap avg, Graphics avgGfx) {
@@ -133,19 +184,140 @@
             return avg.GetPixel(0, 0);
         }
 
-        private static Color GetAvgBicubic(Bitmap screen, Bitmap avg, Graphics avgGfx) {
-            avgGfx.InterpolationMode = InterpolationMode.Bicubic;
-            avgGfx.DrawImage(screen, 0, 0, avg.Width, avg.Height);
-            return avg.GetPixel(0, 0);
+        private static Color GetAvgBicubicIter(int n, Bitmap screen, (Bitmap bmp, Graphics gfx)[] avgLevels) {
+            var previous = screen;
+            for (var l = avgLevels.Length - n; l < avgLevels.Length; l++) {
+                avgLevels[l].gfx.InterpolationMode = InterpolationMode.Bicubic;
+                avgLevels[l].gfx.DrawImage(previous, 0, 0, avgLevels[l].bmp.Width, avgLevels[l].bmp.Height);
+                previous = avgLevels[l].bmp;
+            }
+
+            return avgLevels.Last().bmp.GetPixel(0, 0);
         }
 
-        private static unsafe Color GetAvgTruth(Bitmap screen) {
+        private static unsafe Color GetAvgTpl(Bitmap screen) {
             var data = screen.LockBits(
                 new Rectangle(0, 0, screen.Width, screen.Height),
                 ImageLockMode.ReadOnly,
                 PixelFormat.Format24bppRgb);
 
-            if (data.Stride != data.Width * 3) throw new InvalidOperationException("Padded images not supported");
+            const int bytesPerPixel = 3;
+            var raw = (byte*)data.Scan0.ToPointer();
+            var rawLineLen = data.Width * bytesPerPixel; // 5760
+            if (data.Stride != rawLineLen) throw new InvalidOperationException("Padded images are not supported.");
+
+            var numChunks = Environment.ProcessorCount; // 12
+            var linesPerChunk = data.Height / numChunks; // 90
+            var chunkLen = rawLineLen * linesPerChunk; // 518400
+
+            var chunkSumsR = new long[numChunks];
+            var chunkSumsG = new long[numChunks];
+            var chunkSumsB = new long[numChunks];
+
+            var loop = Parallel.For(0, numChunks, chunkIdx => {
+                var chunk = raw + chunkIdx * chunkLen;
+                for (var i = 0; i < chunkLen;) {
+                    chunkSumsB[chunkIdx] += chunk[i++];
+                    chunkSumsG[chunkIdx] += chunk[i++];
+                    chunkSumsR[chunkIdx] += chunk[i++];
+                }
+            });
+
+            screen.UnlockBits(data);
+
+            if (!loop.IsCompleted) throw new InvalidOperationException("Parallel loop didn't finish.");
+            var (r, g, b) = (chunkSumsR.Sum(), chunkSumsG.Sum(), chunkSumsB.Sum());
+            var n = data.Width * data.Height;
+
+            return Color.FromArgb((int)(r / n), (int)(g / n), (int)(b / n));
+        }
+
+        private static unsafe Color GetAvgSimd(Bitmap screen) {
+            var data = screen.LockBits(
+                new Rectangle(0, 0, screen.Width, screen.Height),
+                ImageLockMode.ReadOnly,
+                PixelFormat.Format24bppRgb);
+
+            const int bytesPerPixel = 3;
+            var raw = (byte*)data.Scan0.ToPointer();
+            var rawLineLen = data.Width * bytesPerPixel; // 5760
+            if (data.Stride != rawLineLen) throw new InvalidOperationException("Padded images are not supported.");
+
+            var vecsPerRow = rawLineLen / Vector<uint>.Count; // 5760 / 8 = 720
+            var colSums = new Vector<uint>[vecsPerRow];
+
+            for (var y = 0; y < data.Height; y++) {
+                for (var i = 0; i < vecsPerRow;) {
+                    var bytes = Unsafe.Read<Vector<byte>>(raw);
+                    Vector.Widen(bytes, out var ushorts1, out var ushorts2);
+                    Vector.Widen(ushorts1, out var uints1, out var uints2);
+                    Vector.Widen(ushorts2, out var uints3, out var uints4);
+                    colSums[i++] += uints1;
+                    colSums[i++] += uints2;
+                    colSums[i++] += uints3;
+                    colSums[i++] += uints4;
+                    raw += Vector<byte>.Count;
+                }
+            }
+
+            var (r, g, b) = (0L, 0L, 0L);
+
+            for (var i = 0; i < vecsPerRow;) {
+                b += colSums[i][0];
+                g += colSums[i][1];
+                r += colSums[i][2];
+
+                b += colSums[i][3];
+                g += colSums[i][4];
+                r += colSums[i][5];
+
+                b += colSums[i][6];
+                g += colSums[i][7];
+
+                i++;
+
+                r += colSums[i][0];
+
+                b += colSums[i][1];
+                g += colSums[i][2];
+                r += colSums[i][3];
+
+                b += colSums[i][4];
+                g += colSums[i][5];
+                r += colSums[i][6];
+
+                b += colSums[i][7];
+
+                i++;
+
+                g += colSums[i][0];
+                r += colSums[i][1];
+
+                b += colSums[i][2];
+                g += colSums[i][3];
+                r += colSums[i][4];
+
+                b += colSums[i][5];
+                g += colSums[i][6];
+                r += colSums[i][7];
+
+                i++;
+            }
+
+            screen.UnlockBits(data);
+
+            var n = data.Width * data.Height;
+
+            return Color.FromArgb((int)(r / n), (int)(g / n), (int)(b / n));
+        }
+
+        private static unsafe Color GetAvgBase(Bitmap screen) {
+            var data = screen.LockBits(
+                new Rectangle(0, 0, screen.Width, screen.Height),
+                ImageLockMode.ReadOnly,
+                PixelFormat.Format24bppRgb);
+
+            if (data.Stride != data.Width * 3) throw new InvalidOperationException("Padded images are not supported.");
 
             var raw = (byte*)data.Scan0.ToPointer();
             var (r, g, b) = (0L, 0L, 0L);
@@ -217,5 +389,7 @@
             .Append(c.R).Append(", ")
             .Append(c.G).Append(", ")
             .Append(c.B).Append(", ");
+
+        private static IEnumerable<int> Range(int start, int count) => Enumerable.Range(start, count);
     }
 }
