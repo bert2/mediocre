@@ -90,35 +90,29 @@
             using var screen = new Bitmap(width, height);
             using var screenGfx = Graphics.FromImage(screen);
 
-            const int levels = 4;
-            var avgLevels = Enumerable.Range(0, levels)
-                .Select(l => {
-                    var size = 1 << (2 * l);
-                    var bmp = new Bitmap(size, size);
+            var avgLevels = Enumerable.Range(1, int.MaxValue)
+                .Select(x => 1 << x)
+                .Select(x => screen.Size / x)
+                .TakeWhile(x => x.Width > 0 || x.Height > 0)
+                .Select(x => new Size(Math.Max(x.Width, 1), Math.Max(x.Height, 1)))
+                .Select(s => {
+                    var bmp = new Bitmap(s.Width, s.Height);
                     var gfx = Graphics.FromImage(bmp);
+                    gfx.InterpolationMode = InterpolationMode.Bilinear;
                     return (bmp, gfx);
                 })
-                .Reverse()
                 .ToArray();
-
-            using var avgBicubic = new Bitmap(1, 1);
-            using var avgBicubicGfx = Graphics.FromImage(avgBicubic);
-            using var avgBicubic2 = new Bitmap(4, 4);
-            using var avgBicubic2Gfx = Graphics.FromImage(avgBicubic2);
 
             var avgsBase = new StringBuilder(20 * iterations);
             var avgsTpl = new StringBuilder(20 * iterations);
             var avgsSimd = new StringBuilder(20 * iterations);
-            var avgsBicubicHq = new StringBuilder(20 * iterations);
-            var avgsBicubic1x = new StringBuilder(20 * iterations);
-            var avgsBicubic2x = new StringBuilder(20 * iterations);
-            var avgsBicubic3x = new StringBuilder(20 * iterations);
-            var avgsBicubic4x = new StringBuilder(20 * iterations);
+            var avgsBicubic = new StringBuilder(20 * iterations);
+            var avgsBilinear = new StringBuilder(20 * iterations);
 
             Console.WriteLine("warming up...");
             for (var i = 0; i < 100; i++) {
                 screenGfx.CopyFromScreen(left, top, 0, 0, screen.Size);
-                Console.WriteLine(GetAvgBicubicHq(screen, avgBicubic, avgBicubicGfx));
+                Console.WriteLine(GetAvgTpl(screen));
             }
 
             var sw = new Stopwatch();
@@ -143,51 +137,27 @@
                 _ = avgsSimd.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
 
                 sw.Restart();
-                avg = GetAvgBicubicHq(screen, avgBicubic, avgBicubicGfx);
+                avg = GetAvgInterp(screen, avgLevels, InterpolationMode.Bicubic);
                 sw.Stop();
-                _ = avgsBicubicHq.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
+                _ = avgsBicubic.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
 
                 sw.Restart();
-                avg = GetAvgBicubicIter(1, screen, avgLevels);
+                avg = GetAvgInterp(screen, avgLevels, InterpolationMode.Bilinear);
                 sw.Stop();
-                _ = avgsBicubic1x.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
-
-                sw.Restart();
-                avg = GetAvgBicubicIter(2, screen, avgLevels);
-                sw.Stop();
-                _ = avgsBicubic2x.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
-
-                sw.Restart();
-                avg = GetAvgBicubicIter(3, screen, avgLevels);
-                sw.Stop();
-                _ = avgsBicubic3x.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
-
-                sw.Restart();
-                avg = GetAvgBicubicIter(4, screen, avgLevels);
-                sw.Stop();
-                _ = avgsBicubic4x.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
+                _ = avgsBilinear.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
             }
 
-            if (avgsBase.Length > 0)      File.WriteAllText("avgs-baseline.csv", avgsBase.ToString());
-            if (avgsTpl.Length > 0)       File.WriteAllText("avgs-tpl.csv", avgsTpl.ToString());
-            if (avgsSimd.Length > 0)      File.WriteAllText("avgs-simd.csv", avgsSimd.ToString());
-            if (avgsBicubicHq.Length > 0) File.WriteAllText("avgs-bicubic-hq.csv", avgsBicubicHq.ToString());
-            if (avgsBicubic1x.Length > 0) File.WriteAllText("avgs-bicubic-1x.csv", avgsBicubic1x.ToString());
-            if (avgsBicubic2x.Length > 0) File.WriteAllText("avgs-bicubic-2x.csv", avgsBicubic2x.ToString());
-            if (avgsBicubic3x.Length > 0) File.WriteAllText("avgs-bicubic-3x.csv", avgsBicubic3x.ToString());
-            if (avgsBicubic4x.Length > 0) File.WriteAllText("avgs-bicubic-4x.csv", avgsBicubic4x.ToString());
+            if (avgsBase.Length > 0)     File.WriteAllText("avgs-baseline.csv", avgsBase    .ToString());
+            if (avgsTpl.Length > 0)      File.WriteAllText("avgs-tpl.csv",      avgsTpl     .ToString());
+            if (avgsSimd.Length > 0)     File.WriteAllText("avgs-simd.csv",     avgsSimd    .ToString());
+            if (avgsBicubic.Length > 0)  File.WriteAllText("avgs-bicubic.csv",  avgsBicubic .ToString());
+            if (avgsBilinear.Length > 0) File.WriteAllText("avgs-bilinear.csv", avgsBilinear.ToString());
         }
 
-        private static Color GetAvgBicubicHq(Bitmap screen, Bitmap avg, Graphics avgGfx) {
-            avgGfx.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            avgGfx.DrawImage(screen, 0, 0, avg.Width, avg.Height);
-            return avg.GetPixel(0, 0);
-        }
-
-        private static Color GetAvgBicubicIter(int n, Bitmap screen, (Bitmap bmp, Graphics gfx)[] avgLevels) {
+        private static Color GetAvgInterp(Bitmap screen, (Bitmap bmp, Graphics gfx)[] avgLevels, InterpolationMode mode) {
             var previous = screen;
-            for (var l = avgLevels.Length - n; l < avgLevels.Length; l++) {
-                avgLevels[l].gfx.InterpolationMode = InterpolationMode.Bicubic;
+            for (var l = 0; l < avgLevels.Length; l++) {
+                avgLevels[l].gfx.InterpolationMode = mode;
                 avgLevels[l].gfx.DrawImage(previous, 0, 0, avgLevels[l].bmp.Width, avgLevels[l].bmp.Height);
                 previous = avgLevels[l].bmp;
             }
