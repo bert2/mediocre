@@ -291,8 +291,10 @@
         }
 
         private static unsafe Color GetAvgBase(Bitmap screen, float resample, Bitmap resampleScreen, Graphics resampleScreenGfx, int skip) {
+#if DEBUG
             var sw = new Stopwatch();
             sw.Restart();
+#endif
             if (resample < 1.0) {
                 resampleScreenGfx.CompositingMode = CompositingMode.SourceCopy;
                 resampleScreenGfx.CompositingQuality = CompositingQuality.HighSpeed;
@@ -302,15 +304,18 @@
                 resampleScreenGfx.DrawImage(screen, 0, 0, resampleScreen.Width, resampleScreen.Height);
                 screen = resampleScreen;
             }
+#if DEBUG
             sw.Stop(); Console.WriteLine($"resample: {sw.ElapsedMilliseconds}");
 
             sw.Restart();
+#endif
             var data = screen.LockBits(
                 new Rectangle(0, 0, screen.Width, screen.Height),
                 ImageLockMode.ReadOnly,
                 PixelFormat.Format32bppArgb);
+#if DEBUG
             sw.Stop(); Console.WriteLine($"LockBits: {sw.ElapsedMilliseconds}");
-
+#endif
             var row = (int*)data.Scan0.ToPointer();
             var start = row;
             var (sumR, sumG, sumB) = (0L, 0L, 0L);
@@ -318,7 +323,9 @@
             var bytesPP = 4;
             var step = 1 + skip;
             var stride = data.Stride / bytesPP * step;
+#if DEBUG
             sw.Restart();
+#endif
             for (var y = 0; y < data.Height; y += step) {
                 for (var x = 0; x < data.Width; x += step) {
                     var argb = row[x];
@@ -328,8 +335,9 @@
                 }
                 row += stride;
             }
+#if DEBUG
             sw.Stop(); Console.WriteLine($"loop: {sw.ElapsedMilliseconds}");
-
+#endif
             screen.UnlockBits(data);
 
             var n = data.Width * data.Height;
