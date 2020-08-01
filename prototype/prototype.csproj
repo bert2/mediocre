@@ -1,9 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <RootNamespace>basic_test</RootNamespace>
+    <RootNamespace>Yeelight.Ambient.Prototype</RootNamespace>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
@@ -22,7 +22,6 @@
   <ItemGroup>
     <PackageReference Include="System.Drawing.Common" Version="4.7.0" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.7.1" />
-    <PackageReference Include="TextCopy" Version="4.2.0" />
     <PackageReference Include="YeelightAPI" Version="1.8.0" />
   </ItemGroup>
 

@@ -1,4 +1,4 @@
-﻿namespace basic_test {
+﻿namespace Yeelight.Ambient.Prototype {
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
@@ -31,7 +31,7 @@
         public static extern int GetSystemMetrics(SystemMetric metric);
 
         public static async Task Main() {
-            const bool benchmark = true;
+            const bool benchmark = false;
             const bool projector = false;
             const bool virtScreen = false;
 
@@ -57,15 +57,11 @@
             using var screen = new Bitmap(width, height);
             using var screenGfx = Graphics.FromImage(screen);
 
-            using var avg = new Bitmap(1, 1);
-            using var avgGfx = Graphics.FromImage(avg);
-            avgGfx.InterpolationMode = InterpolationMode.HighQualityBicubic;
-
             var prevColor = Color.Black;
             var prevBright = 0;
             while (true) {
                 screenGfx.CopyFromScreen(left, top, 0, 0, screen.Size);
-                var color = GetAvgBase(screen, step: 1);
+                var color = GetAvgBase(screen, step: 2);
 
                 if (color != prevColor) {
                     LogDbg($"set_rgb {color}");
@@ -306,24 +302,15 @@
         }
 
         private static unsafe Color GetAvgBase(Bitmap screen, int step) {
-#if DEBUG
-            var sw = new Stopwatch();
-            sw.Restart();
-#endif
             var data = screen.LockBits(
                 new Rectangle(0, 0, screen.Width, screen.Height),
                 ImageLockMode.ReadOnly,
                 PixelFormat.Format32bppArgb);
-#if DEBUG
-            sw.Stop(); Console.WriteLine($"LockBits: {sw.ElapsedMilliseconds}");
-#endif
+
             var row = (int*)data.Scan0.ToPointer();
             var (sumR, sumG, sumB) = (0L, 0L, 0L);
-
             var stride = data.Stride / sizeof(int) * step;
-#if DEBUG
-            sw.Restart();
-#endif
+
             for (var y = 0; y < data.Height; y += step) {
                 for (var x = 0; x < data.Width; x += step) {
                     var argb = row[x];
@@ -333,9 +320,7 @@
                 }
                 row += stride;
             }
-#if DEBUG
-            sw.Stop(); Console.WriteLine($"loop: {sw.ElapsedMilliseconds}");
-#endif
+
             screen.UnlockBits(data);
 
             var numSamples = data.Width / step * data.Height / step;
@@ -367,8 +352,10 @@
             var listener = new TcpListener(localAddr, port);
             listener.Start();
 
-            Debug.Assert(await device.StartMusicMode(hostName: localAddr.ToString(), port));
+            Console.WriteLine($"listening at {localAddr}:{port}...");
 
+            Debug.Assert(await device.StartMusicMode(hostName: localAddr.ToString(), port));
+            Console.WriteLine("accepting...");
             return await listener.AcceptTcpClientAsync();
         }
 
