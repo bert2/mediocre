@@ -33,7 +33,7 @@
         public static async Task Main() {
             const bool benchmark = true;
             const bool projector = false;
-            const bool virtScreen = true;
+            const bool virtScreen = false;
 
             var left = projector || virtScreen ? GetSystemMetrics(SystemMetric.SM_XVIRTUALSCREEN) : 0;
             var top = projector || virtScreen ? GetSystemMetrics(SystemMetric.SM_YVIRTUALSCREEN) : 0;
@@ -65,9 +65,7 @@
             var prevBright = 0;
             while (true) {
                 screenGfx.CopyFromScreen(left, top, 0, 0, screen.Size);
-                //avgGfx.DrawImage(screen, 0, 0, avg.Width, avg.Height);
-                //var color = avg.GetPixel(0, 0);
-                var color = GetAvgBase(screen, 0);
+                var color = GetAvgBase(screen, step: 1);
 
                 if (color != prevColor) {
                     LogDbg($"set_rgb {color}");
@@ -102,12 +100,13 @@
                 .Select(s => {
                     var bmp = new Bitmap(s.Width, s.Height);
                     var gfx = Graphics.FromImage(bmp);
-                    gfx.InterpolationMode = InterpolationMode.Bilinear;
                     return (bmp, gfx);
                 })
                 .ToArray();
 
             var avgsBase = new StringBuilder(20 * iterations);
+            var avgsStep2 = new StringBuilder(20 * iterations);
+            var avgsStep4 = new StringBuilder(20 * iterations);
             var avgsTpl = new StringBuilder(20 * iterations);
             var avgsSimd = new StringBuilder(20 * iterations);
             var avgsBicubic = new StringBuilder(20 * iterations);
@@ -126,9 +125,22 @@
                 Color avg;
 
                 sw.Restart();
-                avg = GetAvgBase(screen, 0);
+                avg = GetAvgBase(screen, step: 1);
                 sw.Stop();
                 _ = avgsBase.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
+#if DEBUG
+                Console.WriteLine($"avg: {avg}");
+#endif
+
+                sw.Restart();
+                avg = GetAvgBase(screen, step: 2);
+                sw.Stop();
+                _ = avgsStep2.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
+
+                sw.Restart();
+                avg = GetAvgBase(screen, step: 4);
+                sw.Stop();
+                _ = avgsStep4.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
 
                 //sw.Restart();
                 //avg = GetAvgTpl(screen);
@@ -152,6 +164,8 @@
             }
 
             if (avgsBase.Length > 0)     File.WriteAllText("avgs-baseline.csv", avgsBase    .ToString());
+            if (avgsStep2.Length > 0)    File.WriteAllText("avgs-step-2.csv",   avgsStep2   .ToString());
+            if (avgsStep4.Length > 0)    File.WriteAllText("avgs-step-4.csv",   avgsStep4   .ToString());
             if (avgsTpl.Length > 0)      File.WriteAllText("avgs-tpl.csv",      avgsTpl     .ToString());
             if (avgsSimd.Length > 0)     File.WriteAllText("avgs-simd.csv",     avgsSimd    .ToString());
             if (avgsBicubic.Length > 0)  File.WriteAllText("avgs-bicubic.csv",  avgsBicubic .ToString());
@@ -170,6 +184,9 @@
         }
 
         private static unsafe Color GetAvgTpl(Bitmap screen) {
+            // LockBits() is too slow, because it converts to a different PixelFormat.
+            // Fixing this would require changes to the TPL implementation.
+            // Not worth the trouble though, because GetAvg() with `step` is already fast enough.
             var data = screen.LockBits(
                 new Rectangle(0, 0, screen.Width, screen.Height),
                 ImageLockMode.ReadOnly,
@@ -207,6 +224,9 @@
         }
 
         private static unsafe Color GetAvgSimd(Bitmap screen) {
+            // LockBits() is too slow, because it converts to a different PixelFormat.
+            // Fixing this would require changes to the SIMD implementation.
+            // Not worth the trouble though, because GetAvg() with `step` is already fast enough.
             var data = screen.LockBits(
                 new Rectangle(0, 0, screen.Width, screen.Height),
                 ImageLockMode.ReadOnly,
@@ -285,7 +305,7 @@
             return Color.FromArgb((int)(r / n), (int)(g / n), (int)(b / n));
         }
 
-        private static unsafe Color GetAvgBase(Bitmap screen, int skip) {
+        private static unsafe Color GetAvgBase(Bitmap screen, int step) {
 #if DEBUG
             var sw = new Stopwatch();
             sw.Restart();
@@ -300,9 +320,7 @@
             var row = (int*)data.Scan0.ToPointer();
             var (sumR, sumG, sumB) = (0L, 0L, 0L);
 
-            var bytesPP = 4;
-            var step = 1 + skip;
-            var stride = data.Stride / bytesPP * step;
+            var stride = data.Stride / sizeof(int) * step;
 #if DEBUG
             sw.Restart();
 #endif
@@ -311,7 +329,7 @@
                     var argb = row[x];
                     sumR += (argb & 0x00FF0000) >> 16;
                     sumG += (argb & 0x0000FF00) >> 8;
-                    sumB += (argb & 0x000000FF);
+                    sumB += argb & 0x000000FF;
                 }
                 row += stride;
             }
@@ -320,8 +338,11 @@
 #endif
             screen.UnlockBits(data);
 
-            var n = data.Width * data.Height;
-            return Color.FromArgb((int)(sumR / n), (int)(sumG / n), (int)(sumB / n));
+            var numSamples = data.Width / step * data.Height / step;
+            var avgR = sumR / numSamples;
+            var avgG = sumG / numSamples;
+            var avgB = sumB / numSamples;
+            return Color.FromArgb((int)avgR, (int)avgG, (int)avgB);
         }
 
         private static async Task<TcpClient> InitYeelight() {
