@@ -317,7 +317,7 @@
 
             var bytesPP = 4;
             var step = 1 + skip;
-            var stride = data.Stride / bytesPP;
+            var stride = data.Stride / bytesPP * step;
             sw.Restart();
             for (var y = 0; y < data.Height; y += step) {
                 for (var x = 0; x < data.Width; x += step) {
