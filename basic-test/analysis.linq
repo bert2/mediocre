@@ -12,6 +12,8 @@
 
 void Main() {
     var baseline = Read("./bin/Release/netcoreapp3.1/avgs-baseline.csv".Rel());
+    // 4K: (29.092, 4.598427557328723), skip 1: (20.337, 3.9733400307549562), skip 4: (17.565, 3.530407200309912)
+    // HD: ( 8.071, 2.901027231861158)
     baseline.AvgStdDev(x => x.ms).Dump("baseline ms");
 
     var simd = Read("./bin/Release/netcoreapp3.1/avgs-simd.csv".Rel());

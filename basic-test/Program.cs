@@ -10,6 +10,7 @@
     using System.Net.NetworkInformation;
     using System.Net.Sockets;
     using System.Numerics;
+    using System.Reflection;
     using System.Runtime.CompilerServices;
     using System.Runtime.InteropServices;
     using System.Text;
@@ -32,7 +33,7 @@
 
         public static async Task Main() {
             const bool benchmark = true;
-            const bool projector = false;
+            const bool projector = true;
             const bool virtScreen = true;
 
             var left = projector || virtScreen ? GetSystemMetrics(SystemMetric.SM_XVIRTUALSCREEN) : 0;
@@ -65,9 +66,10 @@
             var prevBright = 0;
             while (true) {
                 screenGfx.CopyFromScreen(left, top, 0, 0, screen.Size);
-                avgGfx.DrawImage(screen, 0, 0, avg.Width, avg.Height);
+                //avgGfx.DrawImage(screen, 0, 0, avg.Width, avg.Height);
+                //var color = avg.GetPixel(0, 0);
+                var color = GetAvgBase(screen, 1.0f, null!, null!, 0);
 
-                var color = avg.GetPixel(0, 0);
                 if (color != prevColor) {
                     LogDbg($"set_rgb {color}");
                     var set_rgb = $"{{\"id\": {DateTime.Now.Ticks}, \"method\": \"set_rgb\", \"params\":[{color.ToRgb()}, \"smooth\", {smooth}]}}\r\n";
@@ -92,6 +94,10 @@
 
             using var screen = new Bitmap(width, height);
             using var screenGfx = Graphics.FromImage(screen);
+
+            const float resample = 1f;
+            using var resampleScreen = new Bitmap((int)(width * resample), (int)(height * resample));
+            using var resampleScreenGfx = Graphics.FromImage(resampleScreen);
 
             var avgLevels = Enumerable.Range(1, int.MaxValue)
                 .Select(x => 1 << x)
@@ -125,7 +131,7 @@
                 Color avg;
 
                 sw.Restart();
-                avg = GetAvgBase(screen, 3);
+                avg = GetAvgBase(screen, resample, resampleScreen, resampleScreenGfx, 3);
                 sw.Stop();
                 _ = avgsBase.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
 
@@ -284,24 +290,44 @@
             return Color.FromArgb((int)(r / n), (int)(g / n), (int)(b / n));
         }
 
-        private static unsafe Color GetAvgBase(Bitmap screen, int skip) {
+        private static unsafe Color GetAvgBase(Bitmap screen, float resample, Bitmap resampleScreen, Graphics resampleScreenGfx, int skip) {
+            var sw = new Stopwatch();
+            sw.Restart();
+            if (resample < 1.0) {
+                resampleScreenGfx.CompositingMode = CompositingMode.SourceCopy;
+                resampleScreenGfx.CompositingQuality = CompositingQuality.HighSpeed;
+                resampleScreenGfx.SmoothingMode = SmoothingMode.None;
+                resampleScreenGfx.InterpolationMode = InterpolationMode.NearestNeighbor;
+                resampleScreenGfx.PixelOffsetMode = PixelOffsetMode.Half;
+                resampleScreenGfx.DrawImage(screen, 0, 0, resampleScreen.Width, resampleScreen.Height);
+                screen = resampleScreen;
+            }
+            sw.Stop(); Console.WriteLine($"resample: {sw.ElapsedMilliseconds}");
+
+            sw.Restart();
             var data = screen.LockBits(
                 new Rectangle(0, 0, screen.Width, screen.Height),
                 ImageLockMode.ReadOnly,
-                PixelFormat.Format24bppRgb);
+                PixelFormat.Format32bppArgb);
+            sw.Stop(); Console.WriteLine($"LockBits: {sw.ElapsedMilliseconds}");
+
+            const int bytesPP = 4;
             var row = (byte*)data.Scan0.ToPointer();
-            var rowLen = data.Width * 3;
-            var rowSkip = skip * 3;
+            var rowLen = data.Width * bytesPP;
+            var colSkip = skip * bytesPP;
             var (r, g, b) = (0L, 0L, 0L);
 
+            sw.Restart();
             for (var y = 0; y < data.Height; y++, y += skip) {
-                for (var i = 0; i < rowLen; i += rowSkip) {
+                for (var i = 0; i < rowLen; i += colSkip) {
                     b += row[i++];
                     g += row[i++];
                     r += row[i++];
+                    i++; // skip alpha
                 }
                 row += data.Stride;
             }
+            sw.Stop(); Console.WriteLine($"loop: {sw.ElapsedMilliseconds}");
 
             screen.UnlockBits(data);
 
