@@ -10,7 +10,6 @@
     using System.Net.NetworkInformation;
     using System.Net.Sockets;
     using System.Numerics;
-    using System.Reflection;
     using System.Runtime.CompilerServices;
     using System.Runtime.InteropServices;
     using System.Text;
@@ -40,8 +39,8 @@
             var top = projector || virtScreen ? GetSystemMetrics(SystemMetric.SM_YVIRTUALSCREEN) : 0;
             var width = virtScreen ? GetSystemMetrics(SystemMetric.SM_CXVIRTUALSCREEN) : 1920;
             var height = virtScreen ? GetSystemMetrics(SystemMetric.SM_CYVIRTUALSCREEN) : 1080;
-            Console.WriteLine($"top/left: {top}/{left}");
-            Console.WriteLine($"w/h:      {width}/{height}");
+            Console.WriteLine($"t/l: {top}/{left}");
+            Console.WriteLine($"w/h: {width}/{height}");
 
             if (benchmark)
                 Benchmark(left, top, width, height);
@@ -68,7 +67,7 @@
                 screenGfx.CopyFromScreen(left, top, 0, 0, screen.Size);
                 //avgGfx.DrawImage(screen, 0, 0, avg.Width, avg.Height);
                 //var color = avg.GetPixel(0, 0);
-                var color = GetAvgBase(screen, 1.0f, null!, null!, 0);
+                var color = GetAvgBase(screen, 0);
 
                 if (color != prevColor) {
                     LogDbg($"set_rgb {color}");
@@ -94,10 +93,6 @@
 
             using var screen = new Bitmap(width, height);
             using var screenGfx = Graphics.FromImage(screen);
-
-            const float resample = 1f;
-            using var resampleScreen = new Bitmap((int)(width * resample), (int)(height * resample));
-            using var resampleScreenGfx = Graphics.FromImage(resampleScreen);
 
             var avgLevels = Enumerable.Range(1, int.MaxValue)
                 .Select(x => 1 << x)
@@ -131,7 +126,7 @@
                 Color avg;
 
                 sw.Restart();
-                avg = GetAvgBase(screen, resample, resampleScreen, resampleScreenGfx, 0);
+                avg = GetAvgBase(screen, 0);
                 sw.Stop();
                 _ = avgsBase.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
 
@@ -290,23 +285,9 @@
             return Color.FromArgb((int)(r / n), (int)(g / n), (int)(b / n));
         }
 
-        private static unsafe Color GetAvgBase(Bitmap screen, float resample, Bitmap resampleScreen, Graphics resampleScreenGfx, int skip) {
+        private static unsafe Color GetAvgBase(Bitmap screen, int skip) {
 #if DEBUG
             var sw = new Stopwatch();
-            sw.Restart();
-#endif
-            if (resample < 1.0) {
-                resampleScreenGfx.CompositingMode = CompositingMode.SourceCopy;
-                resampleScreenGfx.CompositingQuality = CompositingQuality.HighSpeed;
-                resampleScreenGfx.SmoothingMode = SmoothingMode.None;
-                resampleScreenGfx.InterpolationMode = InterpolationMode.NearestNeighbor;
-                resampleScreenGfx.PixelOffsetMode = PixelOffsetMode.Half;
-                resampleScreenGfx.DrawImage(screen, 0, 0, resampleScreen.Width, resampleScreen.Height);
-                screen = resampleScreen;
-            }
-#if DEBUG
-            sw.Stop(); Console.WriteLine($"resample: {sw.ElapsedMilliseconds}");
-
             sw.Restart();
 #endif
             var data = screen.LockBits(
