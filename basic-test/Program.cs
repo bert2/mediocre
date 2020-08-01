@@ -33,7 +33,7 @@
 
         public static async Task Main() {
             const bool benchmark = true;
-            const bool projector = true;
+            const bool projector = false;
             const bool virtScreen = true;
 
             var left = projector || virtScreen ? GetSystemMetrics(SystemMetric.SM_XVIRTUALSCREEN) : 0;
@@ -131,7 +131,7 @@
                 Color avg;
 
                 sw.Restart();
-                avg = GetAvgBase(screen, resample, resampleScreen, resampleScreenGfx, 3);
+                avg = GetAvgBase(screen, resample, resampleScreen, resampleScreenGfx, 0);
                 sw.Stop();
                 _ = avgsBase.AppendColor(avg).Append(sw.ElapsedMilliseconds).AppendLine();
 
@@ -311,28 +311,29 @@
                 PixelFormat.Format32bppArgb);
             sw.Stop(); Console.WriteLine($"LockBits: {sw.ElapsedMilliseconds}");
 
-            const int bytesPP = 4;
-            var row = (byte*)data.Scan0.ToPointer();
-            var rowLen = data.Width * bytesPP;
-            var colSkip = skip * bytesPP;
-            var (r, g, b) = (0L, 0L, 0L);
+            var row = (int*)data.Scan0.ToPointer();
+            var start = row;
+            var (sumR, sumG, sumB) = (0L, 0L, 0L);
 
+            var bytesPP = 4;
+            var step = 1 + skip;
+            var stride = data.Stride / bytesPP;
             sw.Restart();
-            for (var y = 0; y < data.Height; y++, y += skip) {
-                for (var i = 0; i < rowLen; i += colSkip) {
-                    b += row[i++];
-                    g += row[i++];
-                    r += row[i++];
-                    i++; // skip alpha
+            for (var y = 0; y < data.Height; y += step) {
+                for (var x = 0; x < data.Width; x += step) {
+                    var argb = row[x];
+                    sumR += (argb & 0x00FF0000) >> 16;
+                    sumG += (argb & 0x0000FF00) >> 8;
+                    sumB += (argb & 0x000000FF);
                 }
-                row += data.Stride;
+                row += stride;
             }
             sw.Stop(); Console.WriteLine($"loop: {sw.ElapsedMilliseconds}");
 
             screen.UnlockBits(data);
 
             var n = data.Width * data.Height;
-            return Color.FromArgb((int)(r / n), (int)(g / n), (int)(b / n));
+            return Color.FromArgb((int)(sumR / n), (int)(sumG / n), (int)(sumB / n));
         }
 
         private static async Task<TcpClient> InitYeelight() {
