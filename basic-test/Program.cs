@@ -298,7 +298,6 @@
             sw.Stop(); Console.WriteLine($"LockBits: {sw.ElapsedMilliseconds}");
 #endif
             var row = (int*)data.Scan0.ToPointer();
-            var start = row;
             var (sumR, sumG, sumB) = (0L, 0L, 0L);
 
             var bytesPP = 4;
