@@ -1,4 +1,4 @@
-﻿namespace Yeelight.Ambient.Prototype {
+﻿namespace Mediocre.Prototype {
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
@@ -32,7 +32,7 @@
 
         public static async Task Main() {
             const bool benchmark = false;
-            const bool projector = false;
+            const bool projector = true;
             const bool virtScreen = false;
 
             var left = projector || virtScreen ? GetSystemMetrics(SystemMetric.SM_XVIRTUALSCREEN) : 0;
