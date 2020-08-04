@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "mediocre": {
+      "commandName": "Project",
+      "commandLineArgs": "sync -v"
+    }
+  }
+}

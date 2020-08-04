@@ -1,4 +1,6 @@
-﻿namespace Mediocre.Prototype {
+﻿#pragma warning disable CS0162 // Unreachable code detected
+
+namespace Mediocre.Prototype {
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
@@ -7,6 +9,7 @@
     using System.Drawing.Imaging;
     using System.IO;
     using System.Linq;
+    using System.Net;
     using System.Net.NetworkInformation;
     using System.Net.Sockets;
     using System.Numerics;
@@ -18,6 +21,7 @@
     using Newtonsoft.Json;
 
     using YeelightAPI;
+    using YeelightAPI.Events;
 
     public enum SystemMetric {
         SM_XVIRTUALSCREEN = 76,
@@ -32,7 +36,7 @@
 
         public static async Task Main() {
             const bool benchmark = false;
-            const bool projector = true;
+            const bool projector = false;
             const bool virtScreen = false;
 
             var left = projector || virtScreen ? GetSystemMetrics(SystemMetric.SM_XVIRTUALSCREEN) : 0;
@@ -65,16 +69,14 @@
 
                 if (color != prevColor) {
                     LogDbg($"set_rgb {color}");
-                    var set_rgb = $"{{\"id\": {DateTime.Now.Ticks}, \"method\": \"set_rgb\", \"params\":[{color.ToRgb()}, \"smooth\", {smooth}]}}\r\n";
-                    _ = device.Client.Send(Encoding.UTF8.GetBytes(set_rgb));
+                    Debug.Assert(await device.SetRGBColor(color.R, color.G, color.B, smooth));
                 }
                 prevColor = color;
 
                 var bright = (int)Math.Round(Math.Clamp(color.GetBrightness() * 100, 1, 100));
                 if (bright != prevBright) {
                     LogDbg($"set_bright {bright}");
-                    var set_bright = $"{{\"id\": {DateTime.Now.Ticks}, \"method\": \"set_bright\", \"params\":[{bright}, \"smooth\", {smooth}]}}\r\n";
-                    _ = device.Client.Send(Encoding.UTF8.GetBytes(set_bright));
+                    Debug.Assert(await device.SetBrightness(bright, smooth));
                 }
                 prevBright = bright;
 
@@ -330,33 +332,17 @@
             return Color.FromArgb((int)avgR, (int)avgG, (int)avgB);
         }
 
-        private static async Task<TcpClient> InitYeelight() {
+        private static async Task<IDeviceController> InitYeelight() {
             DeviceLocator.MaxRetryCount = 2;
             var devices = await DeviceLocator.DiscoverAsync(new Progress<Device>(d => Log($"discovered device: {d}")));
             var device = devices.FirstOrDefault() ?? throw new InvalidOperationException("No device discovered.");
             device.OnNotificationReceived += (_, e) => LogDbg($"dev recvd: {JsonConvert.SerializeObject(e.Result)}");
-            device.OnError += (_, e) => Log($"dev err: {e}");
+            device.OnError += (_, e) => LogErr($"dev err: {e}");
 
             Debug.Assert(await device.Connect());
             Debug.Assert(await device.TurnOn());
-
-            var localAddr = NetworkInterface
-                .GetAllNetworkInterfaces()
-                .Single(ifc => ifc.Name == "Ethernet")
-                .GetIPProperties()
-                .UnicastAddresses
-                .Single(a => a.Address.AddressFamily == AddressFamily.InterNetwork)
-                .Address;
-            const int port = 12345;
-
-            var listener = new TcpListener(localAddr, port);
-            listener.Start();
-
-            Console.WriteLine($"listening at {localAddr}:{port}...");
-
-            Debug.Assert(await device.StartMusicMode(hostName: localAddr.ToString(), port));
-            Console.WriteLine("accepting...");
-            return await listener.AcceptTcpClientAsync();
+            Debug.Assert(await device.StartMusicMode());
+            return device;
         }
 
         private static int ToRgb(this Color c) => (c.R << 16) | (c.G << 8) | c.B;
