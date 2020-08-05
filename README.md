@@ -21,8 +21,10 @@ Working:
 
 Basically everything is still work in progress. This is what's planned:
 
+- deploy to choco
 - select monitor
 - select device (select all devices by default)
+- print runtime stats
 - select application instead of screen as capture surface
 - send avg color to stdout (in configurable formats) to use mediocre with other devices
 - read colors from stdin (in different formats) to use mediocre with other tools that generate colors

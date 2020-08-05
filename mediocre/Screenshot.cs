@@ -1,41 +1,55 @@
 ﻿namespace Mediocre {
+    using System.Collections.Generic;
     using System.Drawing;
     using System.Drawing.Imaging;
+    using System.Linq;
     using System.Runtime.InteropServices;
+    using System.Windows.Forms;
 
-    public class Screen {
-        private readonly Bitmap screen;
-        private readonly Graphics screenGfx;
+    public class Screenshot {
+        public readonly string Name;
+        public readonly Rectangle Bounds;
+        public readonly Screen? Screen;
+        public readonly Bitmap Image;
+        public readonly Graphics Gfx;
 
-        public Rectangle Bounds { get; }
+        public static Screenshot FromPrimaryScreen() => new Screenshot();
 
-        public Screen() : this(
+        public static Screenshot FromVirtualScreen() => new Screenshot(
+            name:   "(virtual screen)",
             top:    GetSystemMetrics(SystemMetric.SM_YVIRTUALSCREEN),
             left:   GetSystemMetrics(SystemMetric.SM_XVIRTUALSCREEN),
             width:  GetSystemMetrics(SystemMetric.SM_CXVIRTUALSCREEN),
-            height: GetSystemMetrics(SystemMetric.SM_CYVIRTUALSCREEN))
-        { }
+            height: GetSystemMetrics(SystemMetric.SM_CYVIRTUALSCREEN));
 
-        public Screen(int top, int left, int width, int height)
-            : this(new Point(x: top, y: left), new Size(width, height))
-        { }
+        public static IEnumerable<Screenshot> FromAll() => Screen
+            .AllScreens
+            .Select(s => new Screenshot(s))
+            .Append(FromVirtualScreen());
 
-        public Screen(Point upperLeft, Size size) : this(new Rectangle(upperLeft, size)) { }
+        public Screenshot() : this(Screen.PrimaryScreen) { }
 
-        public Screen(Rectangle bounds) {
+        public Screenshot(Screen screen) : this(screen.DeviceName, screen.Bounds, screen) { }
+
+        public Screenshot(string name, int top, int left, int width, int height)
+            : this(name, new Point(x: left, y: top), new Size(width, height)) { }
+
+        public Screenshot(string name, Point upperLeft, Size size) : this(name, new Rectangle(upperLeft, size)) { }
+
+        public Screenshot(string name, Rectangle bounds, Screen? screen = null) {
+            Name = name;
             Bounds = bounds;
-            screen = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);
-            screenGfx = Graphics.FromImage(screen);
+            Screen = screen;
+            Image = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);
+            Gfx = Graphics.FromImage(Image);
             Refresh();
         }
 
-        public static Screen FromVirtualScreen() => new Screen();
-
-        public void Refresh() => screenGfx.CopyFromScreen(Bounds.Location, new Point(0, 0), Bounds.Size);
+        public void Refresh() => Gfx.CopyFromScreen(Bounds.Location, new Point(0, 0), Bounds.Size);
 
         public unsafe Color GetAverageColor(int sampleStep) {
-            var data = screen.LockBits(
-                new Rectangle(Point.Empty, screen.Size),
+            var data = Image.LockBits(
+                new Rectangle(Point.Empty, Image.Size),
                 ImageLockMode.ReadOnly,
                 PixelFormat.Format32bppArgb);
 
@@ -53,7 +67,7 @@
                 row += stride;
             }
 
-            screen.UnlockBits(data);
+            Image.UnlockBits(data);
 
             var numSamples = data.Width / sampleStep * data.Height / sampleStep;
             var avgR = sumR / numSamples;

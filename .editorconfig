@@ -5,3 +5,12 @@ dotnet_diagnostic.RCS1090.severity = silent
 
 # RCS1123: Add parentheses when necessary.
 dotnet_diagnostic.RCS1123.severity = silent
+
+# IDE0011: Add braces
+csharp_prefer_braces = false:suggestion
+
+# RCS1001: Add braces (when expression spans over multiple lines).
+dotnet_diagnostic.RCS1001.severity = silent
+
+# RCS1214: Unnecessary interpolated string.
+dotnet_diagnostic.RCS1214.severity = silent

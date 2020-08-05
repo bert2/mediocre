@@ -9,29 +9,33 @@
     public static class Log {
         public static bool Verbose;
 
-        public static void Dbg(string msg) {
+        public static void Dbg(FormattableString msg) {
             if (!Verbose) return;
             Console.ForegroundColor = ConsoleColor.DarkGray;
             Console.WriteLine(msg);
             Console.ResetColor();
         }
 
-        public static void Dbg(object sender, NotificationReceivedEventArgs e) {
-            if (!Verbose) return;
-            Dbg($"device received: {JsonConvert.SerializeObject(e.Result)}");
-        }
-
-        public static void Err(string msg) {
+        public static void Err(FormattableString msg) {
             Console.ForegroundColor = ConsoleColor.DarkRed;
             Console.WriteLine(msg);
             Console.ResetColor();
         }
 
+        public static void Dbg(object sender, NotificationReceivedEventArgs e) {
+            if (Verbose) Dbg($"device received: {JsonConvert.SerializeObject(e.Result)}");
+        }
+
         public static void Err(object sender, UnhandledExceptionEventArgs e)
             => Err($"device error: {e}");
+    }
 
-        public static async Task LogErr(this Task<bool> cmdResult, string action, IDeviceController device) {
-            if (!await cmdResult) Err($"failed to {action} {device}");
+    public static class CmdResultExt {
+        public static async Task Log(this Task<bool> cmdResult, FormattableString msg) {
+            if (await cmdResult)
+                Mediocre.Log.Dbg(msg);
+            else
+                Mediocre.Log.Err($"{msg} failed.");
         }
     }
 }
