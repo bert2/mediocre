@@ -3,8 +3,8 @@
 
     [Verb("sync")]
     public readonly struct SyncOpts {
-        [Option(Default = null)]
-        public string? Device { get; }
+        [Option]
+        public string[] Devices { get; }
 
         [Option(Default = "primary")]
         public string Screen { get; }
@@ -24,8 +24,8 @@
         [Option('v', Default = false)]
         public bool Verbose { get; }
 
-        public SyncOpts(string? device, string screen, int smooth, int fps, int sampleStep, int port, bool verbose) {
-            Device = device;
+        public SyncOpts(string[] devices, string screen, int smooth, int fps, int sampleStep, int port, bool verbose) {
+            Devices = devices;
             Screen = screen;
             Smooth = smooth;
             Fps = fps;

@@ -2,7 +2,7 @@
   "profiles": {
     "mediocre": {
       "commandName": "Project",
-      "commandLineArgs": "sync -v"
+      "commandLineArgs": "list screens"
     }
   }
 }

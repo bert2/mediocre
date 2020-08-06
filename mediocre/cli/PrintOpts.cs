@@ -3,13 +3,17 @@
 
     [Verb("print")]
     public readonly struct PrintOpts {
-        [Option]
+        [Option(Default = "primary")]
+        public string Screen { get; }
+
+        [Option(Default = 30)]
         public int Fps { get; }
 
         [Option(Default = 2)]
         public int SampleStep { get; }
 
-        public PrintOpts(int fps, int sampleStep) {
+        public PrintOpts(string screen, int fps, int sampleStep) {
+            Screen = screen;
             Fps = fps;
             SampleStep = sampleStep;
         }

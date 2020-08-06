@@ -5,7 +5,6 @@
     using System.Drawing.Imaging;
     using System.Linq;
     using System.Runtime.InteropServices;
-    using System.Runtime.Serialization;
     using System.Windows.Forms;
 
     public class Screenshot {
@@ -36,8 +35,8 @@
 
             if (screens.Length == 0) {
                 var all = Screen.AllScreens.Select(s => $"'{s.DeviceName}'").Join(", ");
-                throw new InvalidOperationException
-                    ($"No screen matching '{name}' found. Available screens: {all}");
+                throw new InvalidOperationException(
+                    $"No screen matching '{name}' found. Available screens: {all}");
             } else if (screens.Length != 1) {
                 var ambiguous = screens.Select(s => $"'{s.DeviceName}'").Join(", ");
                 throw new InvalidOperationException(
@@ -47,10 +46,12 @@
             }
         }
 
-        public static IEnumerable<Screenshot> ListAll() => Screen
+        public static IEnumerable<Screenshot> ListAll(string? filter) => Screen
             .AllScreens
             .Select(s => new Screenshot(s))
-            .Append(FromVirtualScreen());
+            .Append(FromVirtualScreen())
+            .Where(s => filter == null
+                || s.ScreenName.Contains(filter, StringComparison.OrdinalIgnoreCase));
 
         public Screenshot() : this(Screen.PrimaryScreen) { }
 

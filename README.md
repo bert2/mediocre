@@ -2,6 +2,14 @@
 
 Turn your Xiaomi Yeelight into an ambient light by synchronizing it with the average color of your screen.
 
+## Quick start
+
+Use the first Yeelight that is discovered and sync it with the average color of the primary screen:
+
+```powershell
+PS> mediocre sync
+```
+
 ## Know problems
 
 ### Average color is always black/dark when watching Netflix
@@ -21,15 +29,13 @@ Working:
 
 Basically everything is still work in progress. This is what's planned:
 
-- deploy to choco
-- select monitor
+- install via choco
 - select device (select all devices by default)
 - print runtime stats
-- select application instead of screen as capture surface
+- select application instead of screen as capture surface?
 - send avg color to stdout (in configurable formats) to use mediocre with other devices
 - read colors from stdin (in different formats) to use mediocre with other tools that generate colors
 - list available devices
-- list available screens
 - utilities like turn on/off, set color/brightness
 - verify BitBlt() does not need to convert the color format (minimize runtime costs)
 
