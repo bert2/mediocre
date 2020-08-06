@@ -2,8 +2,6 @@
     using System;
     using System.Collections.Generic;
     using System.Drawing;
-    using System.Linq;
-    using System.Text;
     using System.Threading.Tasks;
 
     using CommandLine;
@@ -24,26 +22,29 @@
             Log.Verbose = opts.Verbose;
             Console.WriteLine(HeadingInfo.Default);
 
+            var screenshot = Screenshot.FromScreenName(opts.Screen);
+            Log.Dbg($"selected screen {screenshot.ScreenName}.");
+
             var device = await Device.InitFirst(opts.Port);
-            var screen = Screenshot.FromPrimaryScreen();
+            Log.Msg($"syncing average color of {screenshot.ScreenName} with {device}.");
 
             var prevColor = Color.Black;
             var prevBright = 0;
             var delay = 1000 / opts.Fps;
 
             while (true) {
-                screen.Refresh();
+                screenshot.Refresh();
 
-                var color = screen.GetAverageColor(opts.SampleStep);
+                var color = screenshot.GetAverageColor(opts.SampleStep);
                 var bright = (int)Math.Round(Math.Clamp(color.GetBrightness() * 100, 1, 100));
 
                 if (color != prevColor) await device
                     .SetRGBColor(color.R, color.G, color.B, opts.Smooth)
-                    .Log($"setting {color}");
+                    .Log($"setting {color}.");
 
                 if (bright != prevBright) await device
                     .SetBrightness(bright, opts.Smooth)
-                    .Log($"setting brightness {bright}");
+                    .Log($"setting brightness {bright}.");
 
                 prevColor = color;
                 prevBright = bright;
@@ -66,19 +67,19 @@
             Console.WriteLine(HeadingInfo.Default);
             Console.WriteLine();
 
-            Screenshot.FromAll().ForEach(screen => {
+            foreach (var screen in Screenshot.ListAll()) {
                 var isPrimary = screen.Screen?.Primary == true;
                 if (isPrimary) Console.ForegroundColor = ConsoleColor.DarkYellow;
 
-                Console.WriteLine($"{screen.Name} {(isPrimary ? "(primary)" : "")}");
+                Console.WriteLine($"{screen.ScreenName} {(isPrimary ? "(primary)" : "")}");
                 Console.WriteLine();
-                Console.WriteLine($"  upper left    ({screen.Bounds.Top}, {screen.Bounds.Left})");
-                Console.WriteLine($"  width         {screen.Bounds.Width} px");
-                Console.WriteLine($"  height        {screen.Bounds.Height} px");
+                Console.WriteLine($"  upper left:           ({screen.Bounds.Top}, {screen.Bounds.Left})");
+                Console.WriteLine($"  width:                {screen.Bounds.Width} px");
+                Console.WriteLine($"  height:               {screen.Bounds.Height} px");
                 Console.WriteLine();
 
                 Console.ResetColor();
-            });
+            }
 
             return Task.FromResult(0);
         }

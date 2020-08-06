@@ -1,13 +1,15 @@
 ﻿namespace Mediocre {
+    using System;
     using System.Collections.Generic;
     using System.Drawing;
     using System.Drawing.Imaging;
     using System.Linq;
     using System.Runtime.InteropServices;
+    using System.Runtime.Serialization;
     using System.Windows.Forms;
 
     public class Screenshot {
-        public readonly string Name;
+        public readonly string ScreenName;
         public readonly Rectangle Bounds;
         public readonly Screen? Screen;
         public readonly Bitmap Image;
@@ -16,13 +18,36 @@
         public static Screenshot FromPrimaryScreen() => new Screenshot();
 
         public static Screenshot FromVirtualScreen() => new Screenshot(
-            name:   "(virtual screen)",
-            top:    GetSystemMetrics(SystemMetric.SM_YVIRTUALSCREEN),
-            left:   GetSystemMetrics(SystemMetric.SM_XVIRTUALSCREEN),
-            width:  GetSystemMetrics(SystemMetric.SM_CXVIRTUALSCREEN),
-            height: GetSystemMetrics(SystemMetric.SM_CYVIRTUALSCREEN));
+            screenName: "(virtual screen)",
+            top:        GetSystemMetrics(SystemMetric.SM_YVIRTUALSCREEN),
+            left:       GetSystemMetrics(SystemMetric.SM_XVIRTUALSCREEN),
+            width:      GetSystemMetrics(SystemMetric.SM_CXVIRTUALSCREEN),
+            height:     GetSystemMetrics(SystemMetric.SM_CYVIRTUALSCREEN));
 
-        public static IEnumerable<Screenshot> FromAll() => Screen
+        public static Screenshot FromScreenName(string name) {
+            if (name.Equals("primary", StringComparison.OrdinalIgnoreCase))
+                return FromPrimaryScreen();
+            else if (name.Equals("virtual", StringComparison.OrdinalIgnoreCase))
+                return FromVirtualScreen();
+
+            var screens = Screen.AllScreens
+                .Where(s => s.DeviceName.Contains(name, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            if (screens.Length == 0) {
+                var all = Screen.AllScreens.Select(s => $"'{s.DeviceName}'").Join(", ");
+                throw new InvalidOperationException
+                    ($"No screen matching '{name}' found. Available screens: {all}");
+            } else if (screens.Length != 1) {
+                var ambiguous = screens.Select(s => $"'{s.DeviceName}'").Join(", ");
+                throw new InvalidOperationException(
+                    $"Multiple screens found for '{name}': {ambiguous}");
+            } else {
+                return new Screenshot(screens.Single());
+            }
+        }
+
+        public static IEnumerable<Screenshot> ListAll() => Screen
             .AllScreens
             .Select(s => new Screenshot(s))
             .Append(FromVirtualScreen());
@@ -31,13 +56,13 @@
 
         public Screenshot(Screen screen) : this(screen.DeviceName, screen.Bounds, screen) { }
 
-        public Screenshot(string name, int top, int left, int width, int height)
-            : this(name, new Point(x: left, y: top), new Size(width, height)) { }
+        public Screenshot(string screenName, int top, int left, int width, int height)
+            : this(screenName, new Point(x: left, y: top), new Size(width, height)) { }
 
-        public Screenshot(string name, Point upperLeft, Size size) : this(name, new Rectangle(upperLeft, size)) { }
+        public Screenshot(string screenName, Point upperLeft, Size size) : this(screenName, new Rectangle(upperLeft, size)) { }
 
-        public Screenshot(string name, Rectangle bounds, Screen? screen = null) {
-            Name = name;
+        public Screenshot(string screenName, Rectangle bounds, Screen? screen = null) {
+            ScreenName = screenName;
             Bounds = bounds;
             Screen = screen;
             Image = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);

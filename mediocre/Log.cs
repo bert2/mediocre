@@ -9,6 +9,8 @@
     public static class Log {
         public static bool Verbose;
 
+        public static void Msg(FormattableString msg) => Console.WriteLine(msg);
+
         public static void Dbg(FormattableString msg) {
             if (!Verbose) return;
             Console.ForegroundColor = ConsoleColor.DarkGray;

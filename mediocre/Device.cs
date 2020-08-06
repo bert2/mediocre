@@ -17,9 +17,9 @@
             device.OnNotificationReceived += Log.Dbg;
             Log.Dbg($"selected device {device}.");
 
-            await device.Connect().Log($"connecting to {device}");
-            await device.TurnOn().Log($"turning on {device}");
-            await device.StartMusicMode(port: port).Log($"activating music mode on {device}");
+            await device.Connect().Log($"connecting to {device}.");
+            await device.TurnOn().Log($"turning on {device}.");
+            await device.StartMusicMode(port: port).Log($"activating music mode on {device}.");
 
             return device;
         }
