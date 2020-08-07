@@ -1,4 +1,4 @@
-﻿namespace Mediocre.Prototype {
+﻿namespace Mediocre.CLI {
     using CommandLine;
 
     [Verb("read")]

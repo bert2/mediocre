@@ -2,13 +2,12 @@
     using System;
     using System.Collections.Generic;
     using System.Drawing;
-    using System.Net.Http.Headers;
     using System.Threading.Tasks;
 
     using CommandLine;
     using CommandLine.Text;
 
-    using Mediocre.Prototype;
+    using Mediocre.CLI;
 
     public static class Program {
         public static async Task<int> Main(string[] args) => await new Parser()
