@@ -1,6 +1,8 @@
 ﻿namespace Mediocre.Prototype {
+    using System.Collections.Generic;
 
     using CommandLine;
+    using CommandLine.Text;
 
     [Verb("list")]
     public readonly struct ListOpts {
@@ -20,6 +22,13 @@
         public ListOpts(ListType what, string? filter) {
             What = what;
             Filter = filter;
+        }
+
+        [Usage(ApplicationAlias = "yourapp")]
+        public static IEnumerable<Example> Examples {
+            get {
+                yield return new Example("Normal scenario", new ListOpts(ListType.screens, null));
+            }
         }
     }
 
