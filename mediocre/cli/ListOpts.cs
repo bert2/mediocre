@@ -8,7 +8,7 @@
             MetaName = "what",
             MetaValue = "ENUM",
             HelpText = "What should be listed.")]
-        public ListType What { get; }
+        public ListWhat What { get; }
 
         [Option(
             Default = null,
@@ -16,13 +16,13 @@
             HelpText = "Optional filter. Only list items with STRING in their name.")]
         public string? Filter { get; }
 
-        public ListOpts(ListType what, string? filter) {
+        public ListOpts(ListWhat what, string? filter) {
             What = what;
             Filter = filter;
         }
     }
 
-    public enum ListType {
+    public enum ListWhat {
         devices,
         screens
     }

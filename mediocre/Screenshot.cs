@@ -18,10 +18,10 @@
 
         public static Screenshot FromVirtualScreen() => new Screenshot(
             screenName: "(virtual screen)",
-            top:        GetSystemMetrics(SystemMetric.SM_YVIRTUALSCREEN),
-            left:       GetSystemMetrics(SystemMetric.SM_XVIRTUALSCREEN),
-            width:      GetSystemMetrics(SystemMetric.SM_CXVIRTUALSCREEN),
-            height:     GetSystemMetrics(SystemMetric.SM_CYVIRTUALSCREEN));
+            top:    GetSystemMetrics(SystemMetric.SM_YVIRTUALSCREEN),
+            left:   GetSystemMetrics(SystemMetric.SM_XVIRTUALSCREEN),
+            width:  GetSystemMetrics(SystemMetric.SM_CXVIRTUALSCREEN),
+            height: GetSystemMetrics(SystemMetric.SM_CYVIRTUALSCREEN));
 
         public static Screenshot FromScreenName(string name) {
             if (name.Equals("primary", StringComparison.OrdinalIgnoreCase))
@@ -34,19 +34,17 @@
                 .ToArray();
 
             if (screens.Length == 0) {
-                var all = Screen.AllScreens.Select(s => $"'{s.DeviceName}'").Join(", ");
                 throw new InvalidOperationException(
-                    $"No screen matching '{name}' found. Available screens: {all}");
+                    $"No screen matching '{name}' found. Available screens: {Screen.AllScreens.Print()}");
             } else if (screens.Length != 1) {
-                var ambiguous = screens.Select(s => $"'{s.DeviceName}'").Join(", ");
                 throw new InvalidOperationException(
-                    $"Multiple screens found for '{name}': {ambiguous}");
+                    $"Multiple screens found for '{name}': {screens.Print()}");
             } else {
                 return new Screenshot(screens.Single());
             }
         }
 
-        public static IEnumerable<Screenshot> ListAll(string? filter) => Screen
+        public static IEnumerable<Screenshot> All(string? filter) => Screen
             .AllScreens
             .Select(s => new Screenshot(s))
             .Append(FromVirtualScreen())

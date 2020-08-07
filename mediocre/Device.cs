@@ -1,11 +1,17 @@
 ﻿namespace Mediocre {
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
 
     using YeelightAPI;
 
     public static class Device {
+        public static async Task<IEnumerable<YeelightAPI.Device>> All(string? filter) {
+            DeviceLocator.MaxRetryCount = 3;
+            return await DeviceLocator.DiscoverAsync();
+        }
+
         public static async Task<IDeviceController> InitFirst(int port) {
             Log.Dbg($"looking for Yeelight devices...");
             DeviceLocator.MaxRetryCount = 3;

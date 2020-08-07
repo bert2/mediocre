@@ -1,7 +1,7 @@
 ﻿namespace Mediocre {
     using System;
-    using System.Collections.Generic;
     using System.Drawing;
+    using System.Linq;
     using System.Threading.Tasks;
 
     using CommandLine;
@@ -79,8 +79,8 @@
         }
 
         private static Task<int> List(ListOpts opts) => opts.What switch {
-            ListType.screens => ListScreens(opts.Filter),
-            ListType.devices => ListScreens(opts.Filter),
+            ListWhat.screens => ListScreens(opts.Filter),
+            ListWhat.devices => ListDevices(opts.Filter),
             _ => throw new ArgumentOutOfRangeException()
         };
 
@@ -88,7 +88,7 @@
             Console.WriteLine(HeadingInfo.Default);
             Console.WriteLine();
 
-            foreach (var screen in Screenshot.ListAll(filter)) {
+            foreach (var screen in Screenshot.All(filter)) {
                 var isPrimary = screen.Screen?.Primary == true;
                 if (isPrimary) Console.ForegroundColor = ConsoleColor.DarkYellow;
 
@@ -105,47 +105,37 @@
             return Task.FromResult(0);
         }
 
+        private static async Task<int> ListDevices(string? filter) {
+            Console.WriteLine(HeadingInfo.Default);
+            Console.WriteLine();
+
+            foreach (var device in await Device.All(filter)) {
+                var props = device.Properties.Select(x => $"{x.Key} = {x.Value}").OrderBy(x => x);
+                var ops = device.SupportedOperations.Select(x => x.GetRealName()).OrderBy(x => x);
+
+                Console.WriteLine(device);
+                Console.WriteLine();
+                Console.WriteLine($"  id:                   {device.Id}");
+                Console.WriteLine($"  name:                 {device.Name}");
+                Console.WriteLine($"  model:                {device.Model}");
+                Console.WriteLine($"  firmware:             {device.FirmwareVersion}");
+                Console.WriteLine($"  hostname:             {device.Hostname}");
+                Console.WriteLine($"  port:                 {device.Port}");
+                Console.WriteLine($"  properties:           {props.Join("\n                        ")}");
+                Console.WriteLine($"  supported commands:   {ops.Join("\n                        ")}");
+                Console.WriteLine();
+            }
+
+            return await Task.FromResult(0);
+        }
+
         private static Task<int> ShowHelp(NotParsed<object> result) {
-            Console.WriteLine(HelpText.AutoBuild(
-                result,
-                helpText => helpText
-                    .With(ht => ht.Copyright = "")
-                    .With(ht => ht.AdditionalNewLineAfterOption = false)
-                    .With(ht => ht.AddEnumValuesToHelpText = true)));
+            var help = HelpText.AutoBuild(result, helpText => helpText
+                .With(ht => ht.Copyright = "")
+                .With(ht => ht.AdditionalNewLineAfterOption = false)
+                .With(ht => ht.AddEnumValuesToHelpText = true));
+            Console.WriteLine(help);
             return Task.FromResult(1);
-        }
-
-        private static async Task<int> MapResult(
-            this ParserResult<object> result,
-            Func<SyncOpts, Task<int>> parsedSync,
-            Func<PrintOpts, Task<int>> parsedPrint,
-            Func<ReadOpts, Task<int>> parsedRead,
-            Func<ListOpts, Task<int>> parsedList,
-            Func<NotParsed<object>, Task<int>> notParsed)
-            => await result.MapResult(
-                parsedSync,
-                parsedPrint,
-                parsedRead,
-                parsedList,
-                notParsedFunc: _ => notParsed((NotParsed<object>)result));
-
-        private static int Scale(this float x, int min, int max, int? factor = null)
-            => (int)Math.Round(Math.Clamp(x * (factor ?? max), min, max));
-
-        private static int ToRgb(this Color c) => (c.R << 16) | (c.G << 8) | c.B;
-
-        private static string Print(this Color c) => $"({c.R}, {c.G}, {c.B})";
-
-        private static string Print(this bool? b) => b == true ? "yes" : "no";
-
-        private static void ForEach<T>(this IEnumerable<T> xs, Action<T> effect) {
-            foreach (var x in xs)
-                effect(x);
-        }
-
-        private static T With<T>(this T x, Action<T> effect) {
-            effect(x);
-            return x;
         }
     }
 }

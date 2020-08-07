@@ -2,7 +2,7 @@
   "profiles": {
     "mediocre": {
       "commandName": "Project",
-      "commandLineArgs": "list screens"
+      "commandLineArgs": "list devices"
     }
   }
 }
