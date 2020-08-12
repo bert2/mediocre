@@ -22,7 +22,7 @@
   <ItemGroup>
     <PackageReference Include="System.Drawing.Common" Version="4.7.0" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.7.1" />
-    <PackageReference Include="YeelightAPI" Version="1.9.0-beta-CI-20200804-094711" />
+    <PackageReference Include="YeelightAPI" Version="1.9.0" />
   </ItemGroup>
 
 </Project>
