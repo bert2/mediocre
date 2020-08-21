@@ -24,13 +24,13 @@
             height: GetSystemMetrics(SystemMetric.SM_CYVIRTUALSCREEN));
 
         public static Screenshot FromScreenName(string name) {
-            if (name.Equals("primary", StringComparison.OrdinalIgnoreCase))
+            if (name.EqualsI("primary"))
                 return FromPrimaryScreen();
-            else if (name.Equals("virtual", StringComparison.OrdinalIgnoreCase))
+            else if (name.EqualsI("virtual"))
                 return FromVirtualScreen();
 
             var screens = Screen.AllScreens
-                .Where(s => s.DeviceName.Contains(name, StringComparison.OrdinalIgnoreCase))
+                .Where(s => s.DeviceName.ContainsI(name))
                 .ToArray();
 
             if (screens.Length == 0) {
@@ -44,12 +44,20 @@
             }
         }
 
-        public static IEnumerable<Screenshot> All(string? filter) => Screen
-            .AllScreens
-            .Select(s => new Screenshot(s))
-            .Append(FromVirtualScreen())
-            .Where(s => filter == null
-                || s.ScreenName.Contains(filter, StringComparison.OrdinalIgnoreCase));
+        public static IEnumerable<Screenshot> All(string? filter) {
+            if (filter.EqualsI("primary"))
+                return FromPrimaryScreen().AsSingleton();
+            else if (filter.EqualsI("virtual"))
+                return FromVirtualScreen().AsSingleton();
+
+            return filter == null
+                ? Screen.AllScreens
+                    .Select(s => new Screenshot(s))
+                    .Append(FromVirtualScreen())
+                : Screen.AllScreens
+                    .Where(s => s.DeviceName.ContainsI(filter))
+                    .Select(s => new Screenshot(s));
+        }
 
         public Screenshot() : this(Screen.PrimaryScreen) { }
 
@@ -61,7 +69,7 @@
         public Screenshot(string screenName, Point upperLeft, Size size) : this(screenName, new Rectangle(upperLeft, size)) { }
 
         public Screenshot(string screenName, Rectangle bounds, Screen? screen = null) {
-            ScreenName = screenName;
+            ScreenName = screenName + (screen?.Primary == true ? " (primary)" : "");
             Bounds = bounds;
             Screen = screen;
             Image = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);

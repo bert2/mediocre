@@ -90,16 +90,15 @@
 
             foreach (var screen in Screenshot.All(filter)) {
                 var isPrimary = screen.Screen?.Primary == true;
-                if (isPrimary) Console.ForegroundColor = ConsoleColor.DarkYellow;
 
-                Console.WriteLine($"{screen.ScreenName} {(isPrimary ? "(primary)" : "")}");
-                Console.WriteLine();
-                Console.WriteLine($"  upper left:           ({screen.Bounds.Top}, {screen.Bounds.Left})");
-                Console.WriteLine($"  width:                {screen.Bounds.Width} px");
-                Console.WriteLine($"  height:               {screen.Bounds.Height} px");
-                Console.WriteLine();
-
-                Console.ResetColor();
+                using (ConsoleWith.FG(ConsoleColor.DarkYellow).When(isPrimary)) {
+                    Console.WriteLine(screen.ScreenName);
+                    Console.WriteLine();
+                    Console.WriteLine($"  upper left:           ({screen.Bounds.Top}, {screen.Bounds.Left})");
+                    Console.WriteLine($"  width:                {screen.Bounds.Width} px");
+                    Console.WriteLine($"  height:               {screen.Bounds.Height} px");
+                    Console.WriteLine();
+                }
             }
 
             return Task.FromResult(0);

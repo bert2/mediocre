@@ -5,6 +5,7 @@
     using System.Drawing;
     using System.Linq;
     using System.Reflection;
+    using System.Security.Policy;
     using System.Threading.Tasks;
     using System.Windows.Forms;
 
@@ -20,6 +21,10 @@
             return x;
         }
 
+        public static IEnumerable<T> AsSingleton<T>(this T x) {
+            yield return x;
+        }
+
         public static void ForEach<T>(this IEnumerable<T> xs, Action<T> effect) {
             foreach (var x in xs)
                 effect(x);
@@ -27,6 +32,13 @@
 
         public static string Join(this IEnumerable<string> strs, string sep = ", ")
             => string.Join(sep, strs);
+
+        public static bool EqualsI(this string? a, string? b)
+            => a == null && b == null
+            || a?.Equals(b, StringComparison.OrdinalIgnoreCase) == true;
+
+        public static bool ContainsI(this string? a, string b)
+            => a?.Contains(b, StringComparison.OrdinalIgnoreCase) == true;
 
         public static string Print(this IEnumerable<Screen> screens)
             => screens.Select(s => $"'{s.DeviceName}'").Join(", ");
@@ -85,5 +97,45 @@
                 notParsedFunc: _ => notParsed((NotParsed<object>)result));
 
         #endregion
+    }
+
+    public static class ConsoleWith {
+        public static ConsoleColorScope FG(ConsoleColor foreground) => new ConsoleColorScope(fg: foreground);
+
+        public static ConsoleColorScope BG(ConsoleColor background) => new ConsoleColorScope(bg: background);
+    }
+
+    public readonly struct ConsoleColorScope : IDisposable {
+        public readonly ConsoleColor oldFgColor;
+        public readonly ConsoleColor oldBgColor;
+
+        public ConsoleColorScope(ConsoleColor? fg = null, ConsoleColor? bg = null) {
+            oldFgColor = Console.ForegroundColor;
+            oldBgColor = Console.BackgroundColor;
+            Console.ForegroundColor = fg ?? Console.ForegroundColor;
+            Console.BackgroundColor = bg ?? Console.BackgroundColor;
+        }
+
+        public ConsoleColorScope FG(ConsoleColor foreground) {
+            Console.ForegroundColor = foreground;
+            return this;
+        }
+
+        public ConsoleColorScope BG(ConsoleColor background) {
+            Console.BackgroundColor = background;
+            return this;
+        }
+
+        public ConsoleColorScope When(bool condition) {
+            if (!condition) Reset();
+            return this;
+        }
+
+        public void Reset() {
+            Console.ForegroundColor = oldFgColor;
+            Console.BackgroundColor = oldBgColor;
+        }
+
+        public void Dispose() => Reset();
     }
 }

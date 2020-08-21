@@ -13,15 +13,14 @@
 
         public static void Dbg(FormattableString msg) {
             if (!Verbose) return;
-            Console.ForegroundColor = ConsoleColor.DarkGray;
-            Console.WriteLine(msg);
-            Console.ResetColor();
+
+            using (ConsoleWith.FG(ConsoleColor.DarkGray))
+                Console.WriteLine(msg);
         }
 
         public static void Err(FormattableString msg) {
-            Console.ForegroundColor = ConsoleColor.DarkRed;
-            Console.WriteLine(msg);
-            Console.ResetColor();
+            using (ConsoleWith.FG(ConsoleColor.DarkRed))
+                Console.WriteLine(msg);
         }
 
         public static void Dbg(object sender, NotificationReceivedEventArgs e) {
