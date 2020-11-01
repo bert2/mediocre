@@ -40,6 +40,9 @@
                 var color = screenshot.GetAverageColor(opts.SampleStep);
                 var bright = color.GetBrightness().Scale(1, 100);
 
+                if (color.R < 10 && color.G < 10 && color.B < 10)
+                    color = Color.Black;
+
                 if (color != prevColor) await device
                     .SetRGBColor(color.R, color.G, color.B, opts.Smooth)
                     .Log($"setting {color}.");
