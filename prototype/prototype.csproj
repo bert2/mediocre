@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.Drawing.Common" Version="5.0.0" />
-    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.7.1" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="5.0.0" />
     <PackageReference Include="YeelightAPI" Version="1.9.0" />
   </ItemGroup>
 
