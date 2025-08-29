@@ -1,33 +1,33 @@
-﻿namespace Mediocre {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Threading.Tasks;
+﻿namespace Mediocre;
 
-    using YeelightAPI;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-    public static class Device {
-        public static async Task<IEnumerable<YeelightAPI.Device>> All(string? filter) {
-            DeviceLocator.MaxRetryCount = 3;
-            return await DeviceLocator.DiscoverAsync();
-        }
+using YeelightAPI;
 
-        public static async Task<IDeviceController> InitFirst(int port) {
-            Log.Dbg($"looking for Yeelight devices...");
-            DeviceLocator.MaxRetryCount = 3;
-            var devices = await DeviceLocator.DiscoverAsync();
-            Log.Dbg($"found {devices.Count()} devices.");
+public static class Device {
+    public static async Task<IEnumerable<YeelightAPI.Device>> All(string? filter) {
+        DeviceLocator.MaxRetryCount = 3;
+        return await DeviceLocator.DiscoverAsync();
+    }
 
-            var device = devices.FirstOrDefault() ?? throw new InvalidOperationException("No device found.");
-            device.OnError += Log.Err;
-            device.OnNotificationReceived += Log.Dbg;
-            Log.Dbg($"selected device {device}.");
+    public static async Task<IDeviceController> InitFirst(int port) {
+        Log.Dbg($"looking for Yeelight devices...");
+        DeviceLocator.MaxRetryCount = 3;
+        var devices = await DeviceLocator.DiscoverAsync();
+        Log.Dbg($"found {devices.Count()} devices.");
 
-            await device.Connect().Log($"connecting to {device}.");
-            await device.TurnOn().Log($"turning on {device}.");
-            await device.StartMusicMode(port: port).Log($"activating music mode on {device}.");
+        var device = devices.FirstOrDefault() ?? throw new InvalidOperationException("No device found.");
+        device.OnError += Log.Err;
+        device.OnNotificationReceived += Log.Dbg;
+        Log.Dbg($"selected device {device}.");
 
-            return device;
-        }
+        await device.Connect().Log($"connecting to {device}.");
+        await device.TurnOn().Log($"turning on {device}.");
+        await device.StartMusicMode(port: port).Log($"activating music mode on {device}.");
+
+        return device;
     }
 }

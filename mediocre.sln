@@ -11,7 +11,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mediocre", "mediocre\mediocre.csproj", "{D77C1D23-0D05-4CE3-857D-47F03DE89BC0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "mediocre", "mediocre\mediocre.csproj", "{D77C1D23-0D05-4CE3-857D-47F03DE89BC0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

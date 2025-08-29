@@ -1,16 +1,16 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net9.0-windows</TargetFramework>
     <RootNamespace>Mediocre</RootNamespace>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
+    <DisableWinExeOutputInference>true</DisableWinExeOutputInference>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -18,9 +18,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CommandLineParser" Version="2.8.0" />
-    <PackageReference Include="System.Drawing.Common" Version="4.7.0" />
-    <PackageReference Include="YeelightAPI" Version="1.9.0-beta-CI-20200804-094711" />
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.8" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.2" />
+    <PackageReference Include="YeelightAPI" Version="1.10.2" />
   </ItemGroup>
 
 </Project>
