@@ -10,7 +10,10 @@ using YeelightAPI;
 public static class Device {
     public static async Task<IEnumerable<YeelightAPI.Device>> All(string? filter) {
         DeviceLocator.MaxRetryCount = 3;
-        return await DeviceLocator.DiscoverAsync();
+        var devices = await DeviceLocator.DiscoverAsync();
+        return filter != null
+            ? devices.Where(d => d.Name.ContainsI(filter) || d.Model.ToString().ContainsI(filter))
+            : devices;
     }
 
     public static async Task<IDeviceController> InitFirst(int port) {

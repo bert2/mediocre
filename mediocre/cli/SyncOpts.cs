@@ -2,10 +2,7 @@
 using CommandLine;
 
 [Verb("sync", HelpText = "Sync one or more Yeelight devices with the average color of a screen.")]
-public readonly struct SyncOpts(string[] devices, string screen, int smooth, int fps, int sampleStep, int port, bool verbose) {
-    [Option]
-    public string[] Devices { get; } = devices;
-
+public readonly struct SyncOpts(string screen, int brightness, int smooth, int fps, int sampleStep, int port, bool verbose) {
     [Option(
         longName: "screen",
         shortName: 's',
@@ -13,6 +10,14 @@ public readonly struct SyncOpts(string[] devices, string screen, int smooth, int
         MetaValue = "STRING",
         HelpText = "Identifies the screen to grab the average color from. STRING must uniquely match a screen by name. Partial matches are allowed. Use 'primary' to select the primary screen. Use 'virtual' to select the virtual screen (the bounding box around all screens).")]
     public string Screen { get; } = screen;
+
+    [Option(
+        longName: "brightness",
+        shortName: 'b',
+        Default = 100,
+        MetaValue = "INTEGER",
+        HelpText = "Controls the brightness of the device. INTEGER is a percentage value between 1 and 100.")]
+    public int Brightness { get; } = brightness;
 
     [Option(Default = 300)]
     public int Smooth { get; } = smooth;
@@ -36,6 +41,10 @@ public readonly struct SyncOpts(string[] devices, string screen, int smooth, int
     [Option(Default = 12345)]
     public int Port { get; } = port;
 
-    [Option('v', Default = false)]
+    [Option(
+        longName: "verbose",
+        shortName: 'v',
+        Default = false,
+        HelpText = "Enables verbose output for debugging.")]
     public bool Verbose { get; } = verbose;
 }

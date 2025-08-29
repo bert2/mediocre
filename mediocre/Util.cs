@@ -53,8 +53,8 @@ public static class Util {
         green: (byte)(n >> 8),
         blue:  (byte)n);
 
-    public static int Scale(this float x, int min, int max, int? factor = null)
-        => (int)Math.Round(Math.Clamp(x * (factor ?? max), min, max));
+    public static int Scale(this float x, int min, int max)
+        => (int)Math.Round(Math.Clamp(x * max, min, max));
 
     #region hack the real name of a supported device operation
 

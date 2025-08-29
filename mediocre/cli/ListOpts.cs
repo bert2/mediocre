@@ -21,7 +21,7 @@ public readonly struct ListOpts(ListWhat what, string? filter = null) {
         MetaName = "filter",
         MetaValue = "STRING",
         Default = null,
-        HelpText = "Optional filter. Only list items with STRING in their name.")]
+        HelpText = "Optional filter. Only list items with STRING in their name or model.")]
     public string? Filter { get; } = filter;
 
     [Usage(ApplicationAlias = "mediocre")]

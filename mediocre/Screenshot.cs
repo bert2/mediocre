@@ -40,9 +40,9 @@ public class Screenshot {
             .Where(s => s.DeviceName.ContainsI(name))
             .ToArray();
 
-        return screens.Length switch {
-            1 => new(screens.Single()),
-            0 => throw new InvalidOperationException($"No screen matching '{name}' found. Available screens: {Screen.AllScreens.Print()}"),
+        return screens switch {
+            [var s] => new(s),
+            [] => throw new InvalidOperationException($"No screen matching '{name}' found. Available screens: {Screen.AllScreens.Print()}"),
             _ => throw new InvalidOperationException($"Multiple screens found for '{name}': {screens.Print()}")
         };
     }
